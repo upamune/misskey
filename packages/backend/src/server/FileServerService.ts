@@ -3,7 +3,9 @@ import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import { Inject, Injectable } from '@nestjs/common';
 import fastifyStatic from '@fastify/static';
+import cors from '@fastify/cors';
 import rename from 'rename';
+import sharp from 'sharp';
 import type { Config } from '@/config.js';
 import type { DriveFile, DriveFilesRepository } from '@/models/index.js';
 import { DI } from '@/di-symbols.js';
@@ -19,9 +21,8 @@ import { contentDisposition } from '@/misc/content-disposition.js';
 import { FileInfoService } from '@/core/FileInfoService.js';
 import { LoggerService } from '@/core/LoggerService.js';
 import { bindThis } from '@/decorators.js';
-import type { FastifyInstance, FastifyRequest, FastifyReply, FastifyPluginOptions } from 'fastify';
 import { isMimeImage } from '@/misc/is-mime-image.js';
-import sharp from 'sharp';
+import type { FastifyInstance, FastifyRequest, FastifyReply, FastifyPluginOptions } from 'fastify';
 
 const _filename = fileURLToPath(import.meta.url);
 const _dirname = dirname(_filename);
@@ -62,6 +63,10 @@ export class FileServerService {
 
 	@bindThis
 	public createServer(fastify: FastifyInstance, options: FastifyPluginOptions, done: (err?: Error) => void) {
+		fastify.register(cors, {
+			origin: '*',
+		});
+
 		fastify.addHook('onRequest', (request, reply, done) => {
 			reply.header('Content-Security-Policy', 'default-src \'none\'; img-src \'self\'; media-src \'self\'; style-src \'unsafe-inline\'');
 			done();
@@ -284,11 +289,11 @@ export class FileServerService {
 					};
 				} else {
 					const data = sharp(file.path, { animated: !('static' in request.query) })
-							.resize({
-								height: 'emoji' in request.query ? 128 : 320,
-								withoutEnlargement: true,
-							})
-							.webp(webpDefault);
+						.resize({
+							height: 'emoji' in request.query ? 128 : 320,
+							withoutEnlargement: true,
+						})
+						.webp(webpDefault);
 
 					image = {
 						data,
