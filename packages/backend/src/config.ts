@@ -2,10 +2,10 @@
  * Config loader
  */
 
-import * as fs from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname } from 'node:path';
-import * as yaml from 'js-yaml';
+import * as fs from "node:fs";
+import { fileURLToPath } from "node:url";
+import { dirname } from "node:path";
+import * as yaml from "js-yaml";
 
 /**
  * ユーザーが設定する必要のある情報
@@ -56,7 +56,7 @@ export type Source = {
 
 	id: string;
 
-	outgoingAddressFamily?: 'ipv4' | 'ipv6' | 'dual';
+	outgoingAddressFamily?: "ipv4" | "ipv6" | "dual";
 
 	deliverJobConcurrency?: number;
 	inboxJobConcurrency?: number;
@@ -106,21 +106,29 @@ const dir = `${_dirname}/../../../.config`;
 /**
  * Path of configuration file
  */
-let path = process.env.NODE_ENV === 'test'
-	? `${dir}/test.yml`
-	: `${dir}/default.yml`;
+let path =
+	process.env.NODE_ENV === "test" ? `${dir}/test.yml` : `${dir}/default.yml`;
 
 if (process.env.CONFIG_PATH) {
-  path = process.env.CONFIG_PATH;
+	path = process.env.CONFIG_PATH;
 }
 
 export function loadConfig() {
-	const meta = JSON.parse(fs.readFileSync(`${_dirname}/../../../built/meta.json`, 'utf-8'));
-	const clientManifestExists = fs.existsSync(_dirname + '/../../../built/_vite_/manifest.json');
-	const clientManifest = clientManifestExists ?
-		JSON.parse(fs.readFileSync(`${_dirname}/../../../built/_vite_/manifest.json`, 'utf-8'))
-		: { 'src/init.ts': { file: 'src/init.ts' } };
-	const config = yaml.load(fs.readFileSync(path, 'utf-8')) as Source;
+	const meta = JSON.parse(
+		fs.readFileSync(`${_dirname}/../../../built/meta.json`, "utf-8")
+	);
+	const clientManifestExists = fs.existsSync(
+		_dirname + "/../../../built/_vite_/manifest.json"
+	);
+	const clientManifest = clientManifestExists
+		? JSON.parse(
+			fs.readFileSync(
+				`${_dirname}/../../../built/_vite_/manifest.json`,
+				"utf-8"
+			)
+		)
+		: { "src/init.ts": { file: "src/init.ts" } };
+	const config = yaml.load(fs.readFileSync(path, "utf-8")) as Source;
 
 	const mixin = {} as Mixin;
 
@@ -128,30 +136,59 @@ export function loadConfig() {
 
 	config.url = url.origin;
 
-	config.port = config.port ?? parseInt(process.env.PORT ?? '', 10);
+	config.port = config.port ?? parseInt(process.env.PORT ?? "", 10);
+
+	if (!config.db) {
+		config.db = {
+			host: "",
+			port: 0,
+			db: "",
+			user: "",
+			pass: "",
+		};
+	}
+	config.db.host = config.db.host ?? process.env.DB_HOST;
+	config.db.port = config.db.port ?? parseInt(process.env.DB_PORT ?? "", 10);
+	config.db.db = config.db.db ?? process.env.DB_NAME;
+	config.db.user = config.db.user ?? process.env.DB_USER;
+	config.db.pass = config.db.pass ?? process.env.DB_PASS;
+	if (process.env.DB_SSLMODE) {
+		if (!config.db.extra) {
+			config.db.extra = {}
+		}
+		config.db.extra.ssl = process.env.DB_SSLMODE;
+	}
 
 	mixin.version = meta.version;
 	mixin.host = url.host;
 	mixin.hostname = url.hostname;
-	mixin.scheme = url.protocol.replace(/:$/, '');
-	mixin.wsScheme = mixin.scheme.replace('http', 'ws');
+	mixin.scheme = url.protocol.replace(/:$/, "");
+	mixin.wsScheme = mixin.scheme.replace("http", "ws");
 	mixin.wsUrl = `${mixin.wsScheme}://${mixin.host}`;
 	mixin.apiUrl = `${mixin.scheme}://${mixin.host}/api`;
 	mixin.authUrl = `${mixin.scheme}://${mixin.host}/auth`;
 	mixin.driveUrl = `${mixin.scheme}://${mixin.host}/files`;
 	mixin.userAgent = `Misskey/${meta.version} (${config.url})`;
-	mixin.clientEntry = clientManifest['src/init.ts'];
+	mixin.clientEntry = clientManifest["src/init.ts"];
 	mixin.clientManifestExists = clientManifestExists;
 
-	const externalMediaProxy = config.mediaProxy ?
-		config.mediaProxy.endsWith('/') ? config.mediaProxy.substring(0, config.mediaProxy.length - 1) : config.mediaProxy
+	const externalMediaProxy = config.mediaProxy
+		? config.mediaProxy.endsWith("/")
+			? config.mediaProxy.substring(0, config.mediaProxy.length - 1)
+			: config.mediaProxy
 		: null;
 	const internalMediaProxy = `${mixin.scheme}://${mixin.host}/proxy`;
 	mixin.mediaProxy = externalMediaProxy ?? internalMediaProxy;
-	mixin.externalMediaProxyEnabled = externalMediaProxy !== null && externalMediaProxy !== internalMediaProxy;
+	mixin.externalMediaProxyEnabled =
+		externalMediaProxy !== null && externalMediaProxy !== internalMediaProxy;
 
-	mixin.videoThumbnailGenerator = config.videoThumbnailGenerator ?
-		config.videoThumbnailGenerator.endsWith('/') ? config.videoThumbnailGenerator.substring(0, config.videoThumbnailGenerator.length - 1) : config.videoThumbnailGenerator
+	mixin.videoThumbnailGenerator = config.videoThumbnailGenerator
+		? config.videoThumbnailGenerator.endsWith("/")
+			? config.videoThumbnailGenerator.substring(
+				0,
+				config.videoThumbnailGenerator.length - 1
+			)
+			: config.videoThumbnailGenerator
 		: null;
 
 	if (!config.redis.prefix) config.redis.prefix = mixin.host;
