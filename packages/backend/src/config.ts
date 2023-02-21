@@ -106,9 +106,13 @@ const dir = `${_dirname}/../../../.config`;
 /**
  * Path of configuration file
  */
-const path = process.env.NODE_ENV === 'test'
+let path = process.env.NODE_ENV === 'test'
 	? `${dir}/test.yml`
 	: `${dir}/default.yml`;
+
+if (process.env.CONFIG_PATH) {
+  path = process.env.CONFIG_PATH;
+}
 
 export function loadConfig() {
 	const meta = JSON.parse(fs.readFileSync(`${_dirname}/../../../built/meta.json`, 'utf-8'));
